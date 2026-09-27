@@ -1,5 +1,7 @@
 # dsh-voice-transcribe
 
+[English](README.en.md) | 简体中文
+
 给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）用的**本地语音/视频转写**插件：
 让 Agent「听得见」——把一个音频或视频文件交给它，它把里面的话转成文字。
 
@@ -7,7 +9,9 @@
 
 ---
 
-## 它真正解决的问题，不是「转写」
+## 为什么需要它
+
+**它真正解决的问题，不是「转写」。**
 
 whisper 谁都会调。麻烦的是**前面那一步**，尤其是中文 IM 生态里：
 
@@ -124,19 +128,6 @@ python py/transcribe.py voice.amr --language zh
 `transcribe.py` 的输出是**一行 JSON**，方便被任何程序调用（dsh 插件就是这么接的）：
 出错时退出码仍是 0，错误放在 JSON 的 `error` 字段里。
 
-## 实测
-
-本机（14 核 CPU、int8、`medium` 模型）真实 QQ 语音样本：
-
-| 项目 | 数字 |
-| --- | --- |
-| SILK 解码 | 约 0.2 秒 / 条 |
-| 模型加载 | 约 2.3 秒（一个进程只加载一次） |
-| 7 秒语音转写 | 约 10 秒（加载时间摊进第一批） |
-| 3.6 秒语音（真样本） | 出字：「那样人太刷屏了 我直接给踢了不是说了吗」 |
-
-**零 API 花费**。CPU 越强越快；`small` 模型大约快一倍、准头差一点。
-
 ## 测试
 
 ```bash
@@ -148,6 +139,19 @@ node test/plugin-selftest.mjs  # 插件接线（用假转写脚本，不需要�
 mp3 头、短文件不崩、不是 SILK 时抛错。
 
 想看真效果，拿手上任意一条 QQ/微信语音跑 `python py/silk.py 你的文件`。
+
+## 测试（实测数据）
+
+本机（14 核 CPU、int8、`medium` 模型）真实 QQ 语音样本：
+
+| 项目 | 数字 |
+| --- | --- |
+| SILK 解码 | 约 0.2 秒 / 条 |
+| 模型加载 | 约 2.3 秒（一个进程只加载一次） |
+| 7 秒语音转写 | 约 10 秒（加载时间摊进第一批） |
+| 3.6 秒语音（真样本） | 出字：「那样人太刷屏了 我直接给踢了不是说了吗」 |
+
+**零 API 花费**。CPU 越强越快；`small` 模型大约快一倍、准头差一点。
 
 ## 已知局限
 
@@ -164,16 +168,6 @@ MIT © 2026 JackZo400
 
 ---
 
-## English (short)
+## English
 
-**dsh-voice-transcribe** — local speech-to-text for
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
-
-The interesting part isn't calling whisper — it's what comes before it on Chinese IM
-platforms: QQ/WeChat voice messages are **SILK** (`#!SILK_V3`) despite being named
-`.amr`, most ffmpeg builds have **no SILK decoder**, and QQ's saved files often carry
-**one extra leading byte** (`0x02`/`0x03`) that makes proper decoders reject them.
-`py/silk.py` handles all three (pure-Python `pilk`, no compilation).
-
-Adds a `transcribe_media` tool plus a `voiceTranscribe` service. Runs entirely on CPU,
-no API cost. `py/silk.py` and `py/transcribe.py` also work standalone. MIT licensed.
+→ Full English README: [README.en.md](README.en.md)
