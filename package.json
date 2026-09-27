@@ -1,0 +1,48 @@
+{
+  "name": "dsh-voice-transcribe",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "给 dsh 的本地语音/视频转写：把 QQ/微信那种 SILK 语音解出来，再用 faster-whisper 转成文字，全程不花 API 钱。",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "silk",
+    "voice",
+    "transcribe",
+    "asr",
+    "whisper",
+    "qq"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JackZo400/dsh-voice-transcribe.git"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "icon": "./icon.svg",
+  "meta": {
+    "title": "Voice Transcribe",
+    "description": "本地语音/视频转写：SILK 解码 + faster-whisper，不花 API 钱"
+  },
+  "files": [
+    "index.js",
+    "src",
+    "py",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/plugin-selftest.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

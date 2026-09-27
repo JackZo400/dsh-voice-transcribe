@@ -1,0 +1,7 @@
+node_modules/
+__pycache__/
+*.pyc
+*.wav
+*.tmp.silk
+*.tmp.pcm
+.DS_Store

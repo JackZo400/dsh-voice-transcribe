@@ -1,0 +1,31 @@
+# dsh-voice-transcribe 的示例配置（bundle patch）。
+#
+# 有 Python 那半边要照顾，所以装完之后**至少**要确认这两件事：
+#   1. pythonPath 指向的 python 里装了 py/requirements.txt 那些包
+#   2. 不用 medium 这么大的模型的话，改 model（越小越快、越不准）
+- insert:
+    - id: voice-transcribe
+      name: dsh-voice-transcribe
+      config:
+        # 跑转写脚本的解释器。装依赖的也是它（pip install -r py/requirements.txt）
+        pythonPath: python3
+
+        # 转写脚本位置。留空 = 用包内自带的 py/transcribe.py
+        # scriptPath: ''
+
+        # faster-whisper 模型：模型名（首次会自动下载）或本地模型目录。
+        # tiny / base / small / medium / large-v3 —— 越大越准也越慢。
+        model: medium
+
+        # 只转前 N 秒；再长的语音宁可截断，也别把调用方卡在那里
+        maxSeconds: 120
+
+        # zh / en …；auto = 自动判断
+        language: auto
+
+        # 词表提示：专有名词最容易听岔，把名字塞进来能明显掰回来。
+        # 别写成句子 —— 写句子它会顺着往下编。
+        prompt: ''
+
+        # 一次最多转几个文件（模型只加载一次，批量比一个个转快得多）
+        maxFiles: 4

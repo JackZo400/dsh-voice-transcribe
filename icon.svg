@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Voice Transcribe">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7dc4ff"/>
+      <stop offset="1" stop-color="#b48cff"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#101422"/>
+  <!-- 声波 -->
+  <g stroke="url(#g)" stroke-width="3.6" stroke-linecap="round">
+    <line x1="14" y1="26" x2="14" y2="38"/>
+    <line x1="23" y1="20" x2="23" y2="44"/>
+    <line x1="32" y1="25" x2="32" y2="39"/>
+    <line x1="41" y1="15" x2="41" y2="49"/>
+  </g>
+  <!-- 转出来的字 -->
+  <g fill="#eaf1ff">
+    <rect x="47" y="27" width="9" height="3.2" rx="1.6"/>
+    <rect x="47" y="34" width="6" height="3.2" rx="1.6"/>
+  </g>
+</svg>
