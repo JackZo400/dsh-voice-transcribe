@@ -8,6 +8,11 @@
 引擎是 **SenseVoice**（sherpa-onnx 跑 int8 onnx）。**全程本地跑，不花 API 钱**，
 约 0.1 秒 / 条，模型 239 MB。
 
+> **同类里更成熟的选择**：桌面麦克风那类（比如 [likhonmain/voice-input](https://github.com/likhonmain/voice-input)）比这份成熟得多——
+> 你要的是「对着电脑说话、转成字」，去装那些。
+> 我们这份专做**别人在 QQ / 微信里发过来的语音**：SILK 解码、QQ 文件头多出来的那个字节、本地 SenseVoice 转写，一条龙。
+> 还有一条事实要说清：**官方 QQ 机器人路线不需要这一套**——平台自带识别文字（`asr_refer_text`）；只有个人号路线（OneBot：NapCat / Lagrange / SnowLuma）才用得着它。
+
 ---
 
 ## 为什么需要它

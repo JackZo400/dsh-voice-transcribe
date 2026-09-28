@@ -10,6 +10,15 @@ inside into text.
 The engine is **SenseVoice** (sherpa-onnx running int8 onnx). **Everything runs locally —
 zero API cost**, about 0.1 s per clip, 239 MB of model.
 
+> **More mature options in the same space**: the desktop-microphone kind (for example
+> [likhonmain/voice-input](https://github.com/likhonmain/voice-input)) is far more mature — if what you want
+> is "talk at my computer and get text", install one of those.
+> This one is for **voice messages other people send in QQ / WeChat**: SILK decoding, the extra byte at the
+> front of QQ's files, and local SenseVoice transcription, end to end.
+> One fact worth stating plainly: **the official QQ bot route does not need any of this** — the platform
+> hands you the recognized text itself (`asr_refer_text`); only the personal-account route (OneBot: NapCat /
+> Lagrange / SnowLuma) needs it.
+
 ---
 
 ## Why you need it
