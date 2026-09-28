@@ -70,6 +70,10 @@ dsh plugin --profile web add github:JackZo400/dsh-voice-transcribe
 pip install -r py/requirements.txt      # sherpa-onnx + numpy + pilk
 ```
 
+**镜像提醒：清华源（`pypi.tuna.tsinghua.edu.cn`）里没有 `sherpa-onnx` 这个包**，会直接报
+`No matching distribution found`（实测过）。装不上就换阿里源或官方源：
+`pip install -i https://mirrors.aliyun.com/pypi/simple -r py/requirements.txt`
+
 **3. 系统里要有 ffmpeg**（非 SILK 的音频/视频靠它转码）
 
 **4. 下 SenseVoice 模型**（约 163 MB 的压缩包，解开是 239 MB 的 int8 模型）
@@ -161,6 +165,7 @@ python py/transcribe.py zh.wav --language zh --model-dir /path/to/sherpa-onnx-se
 ```bash
 python py/test_silk.py          # SILK 识别的逻辑（不需要真语音样本，秒级）
 python py/test_transcribe.py    # 转写那条路：参数/纠错/懒加载；没模型会自动跳过
+python py/test_silk_real.py     # 用 pilk 现造真 SILK，验解码和 QQ 那个 0x02 前缀
 node test/plugin-selftest.mjs   # 插件接线（用假转写脚本，不需要模型）
 ```
 
@@ -171,6 +176,12 @@ mp3 头、短文件不崩、不是 SILK 时抛错。
 再拿桩替掉 `sherpa_onnx` 走一遍完整流程（顺便证明它真的是**用到才 import**），
 最后**装了 sherpa-onnx 且配了模型目录才会**再跑一遍真模型。
 没有模型、没装包的环境下它只打 `SKIP` 并说明原因——**不会假装通过**。
+
+`py/test_silk_real.py` 补的是前两个够不着的那一段：仓库里不带音频，它就用 `pilk` 的 encoder
+**现造**一个真 SILK（音源优先取 SenseVoice 模型包自带、可公开分发的测试音频，没有就自己合成一段音调），
+再验 QQ 那个「前面多一个 `0x02`」的坑——人为加一个字节后解出来的 PCM 和不加那次**逐字节一致**；
+装了 sherpa-onnx 且配了模型目录，它还会把解出来的声音真转一遍。缺依赖时同样只打 `SKIP`
+并说清缺什么，退出码仍是 0。
 
 想看真效果，拿手上任意一条 QQ/微信语音跑 `python py/silk.py 你的文件`。
 
