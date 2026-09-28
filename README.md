@@ -51,6 +51,8 @@ $ ffmpeg -i voice.amr out.wav
 这三件事都在 `py/silk.py` 里处理掉了——用 `pilk`（纯 Python，不需要编译任何东西）解成 PCM，
 自己封标准 WAV。顺手把一个 `.amr` 丢进去也能用，`is_silk()` 会告诉你它到底是什么。
 
+更完整的"踩坑笔记"（适用范围、怎么给 SILK 写一个不作假的自检）在 [docs/silk-notes.md](docs/silk-notes.md)。
+
 ### 那用哪个引擎？
 
 whisper 谁都会调，我们一开始也是它。同一条 1.7 秒的真实群语音：

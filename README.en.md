@@ -61,6 +61,9 @@ All three are handled inside `py/silk.py` — it decodes to PCM with `pilk` (pur
 nothing to compile) and wraps a standard WAV itself. You can throw a plain `.amr` at it
 as well; `is_silk()` will tell you what it actually is.
 
+The fuller field notes (scope, and how to write a SILK self-test that proves something)
+are in [docs/silk-notes.en.md](docs/silk-notes.en.md).
+
 ### Which engine?
 
 Anybody can call whisper, and that is where we started. On one real 1.7-second group
