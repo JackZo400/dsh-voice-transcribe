@@ -7,8 +7,8 @@ A **local speech/video transcription** plugin for
 it lets the Agent "hear" — hand it one audio or video file and it turns the speech
 inside into text.
 
-**Everything runs locally — zero API cost.** The price is a few to a few dozen seconds
-of CPU.
+The engine is **SenseVoice** (sherpa-onnx running int8 onnx). **Everything runs locally —
+zero API cost**, about 0.1 s per clip, 239 MB of model.
 
 ---
 
@@ -16,7 +16,7 @@ of CPU.
 
 **The problem it really solves is not "transcription".**
 
-Anyone can call whisper. The hard part is **the step before it**, especially in the
+Anyone can call a model. The hard part is **the step before it**, especially in the
 Chinese IM ecosystem:
 
 ### Pitfall 1: voice messages from QQ / WeChat are SILK, not amr
@@ -52,6 +52,19 @@ All three are handled inside `py/silk.py` — it decodes to PCM with `pilk` (pur
 nothing to compile) and wraps a standard WAV itself. You can throw a plain `.amr` at it
 as well; `is_silk()` will tell you what it actually is.
 
+### Which engine?
+
+Anybody can call whisper, and that is where we started. On one real 1.7-second group
+voice message: whisper-medium tried five parameter sets (beam 1/5 x vocabulary hint /
+colloquial / no hint) and got it wrong **every** time; SenseVoice got it right on the
+first try, **character for character identical** to the official transcription. Speed is
+not the same ballpark either: about 0.1 s per clip (whisper takes 5-8 s) and a 239 MB int8
+model (whisper medium is about 1.5 GB).
+
+So this plugin has **exactly one path: SenseVoice**. The whisper switches, parameters and
+dependencies are all gone — no half-dead switch left behind to make you think you can
+still go back. The numbers are in "Tests (measured data)" below.
+
 ## Install
 
 **1. Install the plugin**
@@ -63,14 +76,24 @@ dsh plugin --profile web add github:JackZo400/dsh-voice-transcribe
 **2. Install the Python half** (into the interpreter that `pythonPath` points at)
 
 ```bash
-pip install -r py/requirements.txt      # faster-whisper + pilk
+pip install -r py/requirements.txt      # sherpa-onnx + numpy + pilk
 ```
 
 **3. ffmpeg must be on the system** (non-SILK audio/video is transcoded with it)
 
-**4. The first run downloads a model**: the default `medium` is about 1.5 GB (downloaded
-automatically by faster-whisper). If that is too big, switch to `small` / `base`; bigger
-means more accurate and slower.
+**4. Download the SenseVoice model** (about 163 MB compressed, 239 MB int8 once unpacked)
+
+```bash
+curl -LO https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2
+tar xjf sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2
+```
+
+The unpacked `sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/` directory is the
+model directory; it must contain `model.int8.onnx` and `tokens.txt`. **Put it anywhere you
+like**, but write the path into the `modelDir` config (or the `AILIN_ASR_SV_DIR`
+environment variable) — nothing is hard-coded in the source. This model covers five
+languages: Chinese (Mandarin) / English / Japanese / Korean / Cantonese. For other
+versions see the [sherpa-onnx model releases](https://github.com/k2-fsa/sherpa-onnx/releases/tag/asr-models).
 
 ## Configuration
 
@@ -81,23 +104,28 @@ means more accurate and slower.
       config:
         pythonPath: python3        # 装了上面那些包的解释器
         # scriptPath: ''           # 留空 = 用包内自带的 py/transcribe.py
-        model: medium              # tiny/base/small/medium/large-v3，或本地模型目录
+        modelDir: /path/to/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17
         maxSeconds: 120            # 只转前 N 秒
-        language: auto             # zh / en …；auto = 自动判断
-        prompt: ''                 # 词表提示，见下
+        language: auto             # auto / zh / en / ja / ko / yue
+        fix: ''                    # 专有名词纠错表，见下
         maxFiles: 4                # 一次最多转几个（模型只加载一次）
 ```
 
-**How to use `prompt`**: proper nouns are what gets misheard most. Join the person and
-project names you care about with the enumeration comma used in Chinese and put them in
-(the sample below is exactly the kind of value the correction table expects):
+**`modelDir` (or the `AILIN_ASR_SV_DIR` environment variable)**: where the model lives is
+your call; the code never guesses a path. If it is missing, transcription fails loudly
+with "no SenseVoice model directory" instead of failing silently.
+
+**`fix` (or the `AILIN_ASR_FIX` environment variable)**: the proper-noun correction table.
+SenseVoice has **no vocabulary interface** (the `initial_prompt` whisper had), so a
+misheard name can only be fixed on the result. Format is `wrong=right,wrong=right`:
 
 ```yaml
-prompt: '小王、李工、星海项目'
+fix: '小张=张三,星海=星海项目'
 ```
 
-**Do not write it as a sentence** — whisper will follow your sentence onward and "fill
-in" things that were never said.
+The table is applied **left to right**, and a short entry eats the prefix of a longer one —
+**put the long ones first**. The default is an **empty table**: everyone fills in their
+own names.
 
 ## Usage
 
@@ -133,9 +161,12 @@ python py/silk.py voice.amr --out-dir out/ # → out/voice.wav（16k 单声道�
 To transcribe:
 
 ```bash
-python py/transcribe.py voice.amr --language zh
-# {"ok": true, "file": "voice.amr", "text": "…", "lang": "zh", "dur": 1.92, "sec": 6.7}
+python py/transcribe.py zh.wav --language zh --model-dir /path/to/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17
+# {"file": "zh.wav", "dur": 5.59, "ok": true, "text": "开饭时间早上9点至下午5点。", "engine": "sensevoice", "lang": "zh", "sec": 1.0, "load_sec": 0.7, "total_sec": 1.0}
 ```
+
+(That output line is a real run on `test_wavs/zh.wav` from the model archive — reproduce it
+yourself.)
 
 `transcribe.py` prints **a single line of JSON**, so any program can call it (that is how
 the dsh plugin hooks in): on error the exit code is still 0, and the error sits in the
@@ -144,32 +175,41 @@ JSON `error` field.
 ## Tests
 
 ```bash
-python py/test_silk.py         # SILK 识别的逻辑（不需要真语音样本，秒级）
-node test/plugin-selftest.mjs  # 插件接线（用假转写脚本，不需要模型）
+python py/test_silk.py          # SILK 识别的逻辑（不需要真语音样本，秒级）
+python py/test_transcribe.py    # 转写那条路：参数/纠错/懒加载；没模型会自动跳过
+node test/plugin-selftest.mjs   # 插件接线（用假转写脚本，不需要模型）
 ```
 
 `py/test_silk.py` covers exactly those three pitfalls: clean header, `0x02`/`0x03`
 prefix, empty file, mp3 header, short file does not crash, raises when it is not SILK.
+
+`py/test_transcribe.py` needs no model and no network: first it checks argument parsing
+and the correction table, then it stubs out `sherpa_onnx` and runs the whole flow (which
+also proves the import really is lazy), and only **if sherpa-onnx is installed and a model
+directory is configured** does it run the real model once. On a machine without the model
+or the package it only prints `SKIP` with a reason — it **never fakes a pass**.
 
 To see the real thing, run `python py/silk.py 你的文件` on any QQ/WeChat voice message you
 have at hand.
 
 ## Tests (measured data)
 
-On this machine (14-core CPU, int8, `medium` model), real QQ voice samples:
+On this machine (14-core CPU, int8), real voice samples:
 
 | Item | Number |
 | --- | --- |
+| Model size | 239 MB (int8 onnx; whisper medium is about 1.5 GB) |
+| Model load | about 0.9 s (loaded once per process; whisper medium about 1.6 s) |
+| The same 1.7-second group voice message | about 0.1 s to text, right on the first try (whisper-medium missed with all five parameter sets) |
 | SILK decode | about 0.2 s each |
-| Model load | about 2.3 s (loaded only once per process) |
-| 7-second voice transcription | about 10 s (load time spread across the first batch) |
-| 3.6-second voice (real sample) | output: 「那样人太刷屏了 我直接给踢了不是说了吗」 (Chinese, translated below) |
+| 3.6-second voice (real sample) | output: 「那样人太刷屏了 我直接给踢了不是说了吗」 |
 
-The Chinese transcription result above means: "that guy spams too much, I just kicked
-him, did I not say so".
+On that 1.7-second clip SenseVoice was **character for character identical** to the
+official QQ transcription, while none of the five whisper-medium parameter sets got it
+right. The Chinese output above means: "that guy spams too much, I just kicked him, did I
+not say so".
 
-**Zero API spend.** The stronger the CPU the faster; the `small` model is about twice as
-fast with a little less accuracy.
+**Zero API spend.** The stronger the CPU the faster.
 
 ## Known limitations
 
@@ -179,11 +219,16 @@ fast with a little less accuracy.
   but it does not share memory, so every call pays a Python startup cost.
 - **Video: only the audio track is transcribed**, no frames are extracted — understanding
   the picture is a different job.
-- **Pure music / silence comes out as an empty string** (VAD is enabled precisely to hold
-  down whisper's "thanks for watching" style hallucinations). Empty stays honestly empty;
-  nothing is invented.
-- **`medium` on Chinese is usable but not good**, go to `large-v3` for more accuracy
-  (much slower).
+- **Pure silence / pure music is not guaranteed to be an empty string**: SenseVoice
+  hallucinates far less than whisper, but on a purely digital silence it still occasionally
+  emits one or two meaningless characters. Empty stays honestly empty; just do not read
+  "there is text" as "there was speech".
+- **SenseVoice has no vocabulary interface**: proper nouns can only be caught by the `fix`
+  table, and you have to build that yourself.
+- **Long audio is chunked**: past 28 seconds it is cut at the quietest spot and stitched
+  back together; however carefully the cut point is chosen, a word is occasionally split.
+- **Only five languages**: Chinese (Mandarin) / English / Japanese / Korean / Cantonese —
+  look for another model for anything else.
 
 ## License
 

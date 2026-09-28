@@ -2,6 +2,9 @@
 #
 #   pip install -r py/requirements.txt
 #
-faster-whisper>=1.0
+# SenseVoice 推理：sherpa-onnx 跑 int8 onnx，全本地、零 API 钱（含 onnxruntime）
+sherpa-onnx>=1.10
+# 数组计算（sherpa-onnx 会带上，这里写明免得有人装了个光秃秃的环境）
+numpy>=1.24
 # SILK（QQ/微信语音）解码：纯 Python 实现，不需要编译任何东西
 pilk>=0.2.4

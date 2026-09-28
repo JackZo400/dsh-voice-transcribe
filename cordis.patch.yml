@@ -1,8 +1,8 @@
 # dsh-voice-transcribe 的示例配置（bundle patch）。
 #
 # 有 Python 那半边要照顾，所以装完之后**至少**要确认这两件事：
-#   1. pythonPath 指向的 python 里装了 py/requirements.txt 那些包
-#   2. 不用 medium 这么大的模型的话，改 model（越小越快、越不准）
+#   1. pythonPath 指向的 python 里装了 py/requirements.txt 那些包（sherpa-onnx + pilk）
+#   2. modelDir 指到解压出来的 SenseVoice 模型目录（README 的「安装」里给了下载命令）
 - insert:
     - id: voice-transcribe
       name: dsh-voice-transcribe
@@ -13,19 +13,19 @@
         # 转写脚本位置。留空 = 用包内自带的 py/transcribe.py
         # scriptPath: ''
 
-        # faster-whisper 模型：模型名（首次会自动下载）或本地模型目录。
-        # tiny / base / small / medium / large-v3 —— 越大越准也越慢。
-        model: medium
+        # SenseVoice 模型目录：解压出来那个文件夹（里面有 model.int8.onnx + tokens.txt）。
+        # 下载命令见 README 的「安装」；也可以用环境变量 AILIN_ASR_SV_DIR。
+        modelDir: ''
 
         # 只转前 N 秒；再长的语音宁可截断，也别把调用方卡在那里
         maxSeconds: 120
 
-        # zh / en …；auto = 自动判断
+        # auto / zh / en / ja / ko / yue
         language: auto
 
-        # 词表提示：专有名词最容易听岔，把名字塞进来能明显掰回来。
-        # 别写成句子 —— 写句子它会顺着往下编。
-        prompt: ''
+        # 专有名词纠错表：`错=对,错=对`。SenseVoice 没有词表接口（不像 whisper 能用
+        # prompt 塞名字），听岔了只能在结果上纠一道。例：小张=张三,星海=星海项目
+        fix: ''
 
         # 一次最多转几个文件（模型只加载一次，批量比一个个转快得多）
         maxFiles: 4

@@ -1,7 +1,7 @@
 // 调 Python 转写脚本的薄壳：拼参数 → 跑子进程 → 取最后一行 JSON。
 //
 // 为什么是"子进程 + 一行 JSON"而不是把 python 嵌进来：
-//   · faster-whisper 是 Python 生态里最省事的那条路（模型加载、VAD、int8 都是现成的）
+//   · SenseVoice 走 sherpa-onnx，Python 那条路最省事（模型加载、int8、切片都是现成的）
 //   · 分成两个进程，模型崩溃 / 超时都杀得掉，不会把宿主一起带走
 //   · 那一行 JSON 是唯一的契约，脚本可以单独用、单独测
 import { execFile } from 'node:child_process'
@@ -33,17 +33,16 @@ export function parseOutput(stdout) {
 /**
  * 一批文件 → 转写结果数组。
  * 脚本契约：`{ok:true, results:[...]}` 或 `{ok:true, file, text, ...}`（单文件）。
+ * 引擎只有 SenseVoice：模型目录（modelDir）、语言、纠错表（fix）三个参数说了算。
  */
 export async function transcribeFiles(files, opts) {
   const args = [
     ...files,
-    '--model', String(opts.model),
     '--max-seconds', String(opts.maxSeconds),
     '--language', String(opts.language),
-    '--device', String(opts.device),
-    '--compute', String(opts.compute),
   ]
-  if (opts.prompt) args.push('--prompt', String(opts.prompt))
+  if (opts.modelDir) args.push('--model-dir', String(opts.modelDir))
+  if (opts.fix) args.push('--fix', String(opts.fix))
   const stdout = await run(opts.pythonPath, [opts.scriptPath, ...args], {
     timeoutMs: opts.timeoutMs,
     signal: opts.signal,

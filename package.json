@@ -2,7 +2,7 @@
   "name": "dsh-voice-transcribe",
   "version": "0.1.0",
   "type": "module",
-  "description": "给 dsh 的本地语音/视频转写：把 QQ/微信那种 SILK 语音解出来，再用 faster-whisper 转成文字，全程不花 API 钱。",
+  "description": "给 dsh 的本地语音/视频转写：把 QQ/微信那种 SILK 语音解出来，再用 SenseVoice（sherpa-onnx，int8）转成文字，全程不花 API 钱。",
   "license": "MIT",
   "keywords": [
     "dsh",
@@ -13,7 +13,9 @@
     "voice",
     "transcribe",
     "asr",
-    "whisper",
+    "sensevoice",
+    "sherpa-onnx",
+    "onnx",
     "qq"
   ],
   "repository": {
@@ -27,7 +29,7 @@
   "icon": "./icon.svg",
   "meta": {
     "title": "Voice Transcribe",
-    "description": "本地语音/视频转写：SILK 解码 + faster-whisper，不花 API 钱"
+    "description": "本地语音/视频转写：SILK 解码 + SenseVoice（sherpa-onnx int8），不花 API 钱"
   },
   "files": [
     "index.js",

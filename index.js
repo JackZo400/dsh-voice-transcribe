@@ -2,13 +2,16 @@
  * dsh-voice-transcribe —— 让 Agent「听得见」。
  *
  * 给 dsh 加一个工具：把一个本地音频/视频文件转成文字。整条链路都在本地跑，
- * 不花 API 钱，代价是 CPU 几秒到几十秒。
+ * 不花 API 钱，代价是 CPU（SenseVoice 约 0.1 秒一条）。
  *
- * 它解决的其实不是「转写」（whisper 谁都会调），而是**前面那一步**：
+ * 它解决的其实不是「转写」（调个模型谁都会），而是**前面那一步**：
  *   · QQ / 微信发出来的真人语音是 **SILK**（文件名却写着 .amr）
  *   · 常见 ffmpeg 构建**没有 silk 解码器**，喂过去只会得到 "Invalid data found"
  *   · 而且 QQ 存下来的文件常常在最前面**多一个字节**（0x02 / 0x03），不剥掉连解码库都不认
  * 这三件事都在 `py/silk.py` 里处理掉了。
+ *
+ * 引擎是 **SenseVoice**（sherpa-onnx 跑 int8 onnx）：模型 239 MB，
+ * 中文短语音上一遍就对，比 whisper-medium 快两个量级。**只有这一条路**，没有别的开关。
  *
  * 出口：
  *   · `transcribe_media` 工具 —— Agent 自己调
@@ -31,20 +34,18 @@ export const name = 'dsh-voice-transcribe'
 export const inject = ['tools']
 
 const DEFAULTS = {
-  // 跑脚本的解释器 —— 得是装了 faster-whisper 的那个 python
+  // 跑脚本的解释器 —— 得是装了 sherpa-onnx 的那个 python
   pythonPath: process.env.VOICE_TRANSCRIBE_PYTHON || 'python3',
   // 转写脚本位置。留空 = 用包内自带的 py/transcribe.py
   scriptPath: '',
-  // faster-whisper 模型：模型名（会自动下载）或本地模型目录
-  model: process.env.WHISPER_MODEL || 'medium',
+  // SenseVoice 模型目录（要有 model.int8.onnx + tokens.txt）。下载方式见 README
+  modelDir: process.env.AILIN_ASR_SV_DIR || process.env.VOICE_TRANSCRIBE_MODEL_DIR || '',
   // 只转前 N 秒。再长的语音宁可截断，也不要把调用方卡在那里
   maxSeconds: 120,
-  // 语言：zh / en …；auto = 自动判断
+  // 语言：auto / zh / en / ja / ko / yue
   language: 'auto',
-  // 词表提示：专有名词最容易听岔，把名字塞进来能明显掰回来（别写成句子，会顺着编）
-  prompt: '',
-  device: 'cpu',
-  compute: 'int8',
+  // 专有名词纠错表：`错=对,错=对`。SenseVoice 没有词表接口，听岔了只能在结果上纠一道
+  fix: process.env.AILIN_ASR_FIX || '',
   // 一次最多转几个文件（模型只加载一次，批量比一个个转快得多）
   maxFiles: 4,
   timeoutMs: 180_000,
@@ -82,12 +83,10 @@ export function apply(ctx, rawConfig) {
     const results = await transcribeFiles(picked, {
       pythonPath: config.pythonPath,
       scriptPath,
-      model: overrides.model || config.model,
+      modelDir: overrides.modelDir || config.modelDir,
       maxSeconds: overrides.maxSeconds || config.maxSeconds,
       language: overrides.language || config.language,
-      prompt: config.prompt,
-      device: config.device,
-      compute: config.compute,
+      fix: config.fix,
       timeoutMs: config.timeoutMs,
       signal: overrides.signal,
     })
@@ -98,7 +97,7 @@ export function apply(ctx, rawConfig) {
   ctx.tools.register({
     name: 'transcribe_media',
     description:
-      '把本地音频或视频文件转成文字（本地 whisper，不联网、不花钱）。支持 QQ/微信那种 SILK 语音，也支持 mp3/wav/m4a/amr 和视频的音轨。想知道"这段语音说了什么"就用它。',
+      '把本地音频或视频文件转成文字（本地 SenseVoice，不联网、不花钱）。支持 QQ/微信那种 SILK 语音，也支持 mp3/wav/m4a/amr 和视频的音轨。想知道"这段语音说了什么"就用它。',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -108,7 +107,7 @@ export function apply(ctx, rawConfig) {
           items: { type: 'string' },
           description: '一个或多个本地文件路径（绝对路径，或相对工作目录）。视频会转它的音轨。',
         },
-        language: { type: 'string', description: '语言代码，比如 zh、en；不给就自动判断。' },
+        language: { type: 'string', description: '语言代码：auto / zh / en / ja / ko / yue；不给就按配置来。' },
         maxSeconds: { type: 'integer', description: '只转前多少秒，默认跟配置走（通常 120）。' },
       },
       required: ['paths'],
@@ -185,7 +184,7 @@ export function apply(ctx, rawConfig) {
     log('暴露 voiceTranscribe 失败（不影响工具本身）：', String(error))
   }
 
-  log(`就绪：脚本=${scriptPath} 模型=${config.model} 解释器=${config.pythonPath}`)
+  log(`就绪：脚本=${scriptPath} 模型目录=${config.modelDir || '(没配，转写会报错：见 README 的模型下载那步)'} 解释器=${config.pythonPath}`)
 }
 
 /** 脚本给的是文件名；补一个兜底，别让 file 变成空串。 */
